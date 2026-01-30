@@ -73,7 +73,7 @@ import sequelize from './config/database';
 
 // Sync Database
 sequelize.sync({ alter: true }).then(() => {
-    // console.log('SQLite Database connected and synced');
+    console.log('Database connected and synced');
 }).catch((err) => {
     console.error('Database sync error:', err);
 });

@@ -1,0 +1,87 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import { socketHandler } from './services/socket.service';
+
+import authRoutes from './routes/auth.routes';
+
+import consultationRoutes from './routes/consultation.routes';
+import plotRoutes from './routes/plot.routes';
+import scheduleRoutes from './routes/schedule.routes';
+import diseaseRoutes from './routes/disease.routes';
+import notificationRoutes from './routes/notification.routes';
+import adminRoutes from './routes/admin.routes';
+import productRoutes from './routes/product.routes';
+import orderRoutes from './routes/order.routes';
+
+dotenv.config();
+process.env.TZ = 'Asia/Kolkata'; // Set Timezone to India Standard Time
+
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+const PORT = process.env.PORT || 5002;
+
+// Initialize Socket.io
+socketHandler(io);
+
+// Security Middleware
+app.use(helmet());
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 1000, // Increased limit to 1000 to prevent 429 errors in Admin App
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+});
+app.use(limiter);
+
+app.use(cors());
+app.use(express.json({ limit: '1mb' })); // Reduced from 50mb as we use FormData for images
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
+// Request Logger
+app.use((req, res, next) => {
+    res.on('finish', () => {
+        // console.log(`${req.method} ${req.originalUrl} - ${res.statusCode}`);
+    });
+    next();
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/consultations', consultationRoutes);
+app.use('/api/plots', plotRoutes);
+app.use('/api/schedules', scheduleRoutes);
+app.use('/api/diseases', diseaseRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/blogs', require('./routes/blog.routes').default);
+
+import sequelize from './config/database';
+
+// Sync Database
+sequelize.sync({ alter: true }).then(() => {
+    // console.log('SQLite Database connected and synced');
+}).catch((err) => {
+    console.error('Database sync error:', err);
+});
+
+app.get('/', (req, res) => {
+    res.send('AgriConsult Pro Backend Running (SQL Mode)');
+});
+
+httpServer.listen(PORT as number, '0.0.0.0', () => {
+    // console.log(`Server running on port ${PORT}`);
+});

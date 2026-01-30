@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const blog_controller_1 = require("../controllers/blog.controller");
+const upload_middleware_1 = require("../middleware/upload.middleware");
+const router = (0, express_1.Router)();
+router.post('/', upload_middleware_1.upload.array('images', 5), blog_controller_1.createBlog);
+router.get('/', blog_controller_1.getAllBlogs);
+router.put('/:id', upload_middleware_1.upload.array('images', 5), blog_controller_1.updateBlog);
+router.post('/:id/like', blog_controller_1.likeBlog);
+router.delete('/:id', blog_controller_1.deleteBlog);
+exports.default = router;

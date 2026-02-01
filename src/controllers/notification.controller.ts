@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import Notification from '../models/notification.model';
 import User from '../models/user.model';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { sendPushNotification } from '../services/notification.service';
+import { sendPushNotification, sendBatchPushNotifications } from '../services/notification.service';
 
 // Get user notifications (for app user)
 export const getUserNotifications = async (req: AuthRequest, res: Response) => {
@@ -74,6 +74,16 @@ export const sendNotification = async (req: Request, res: Response) => {
             isRead: false
         });
 
+        // Send Push Notification
+        const user = await User.findByPk(userId);
+        if (user && user.pushToken) {
+            await sendPushNotification(
+                user.pushToken,
+                title,
+                message
+            );
+        }
+
         res.status(200).json({ success: true, message: 'Notification sent successfully' });
     } catch (error) {
         console.error('Send Notification Error:', error);
@@ -89,7 +99,7 @@ export const broadcastNotification = async (req: Request, res: Response) => {
         const { title, message } = req.body;
 
         // 1. Fetch all users
-        const users = await User.findAll({ attributes: ['id'] });
+        const users = await User.findAll({ attributes: ['id', 'pushToken'] });
 
         if (!users.length) {
             return res.status(400).json({ message: 'No users found to broadcast to.' });
@@ -107,7 +117,20 @@ export const broadcastNotification = async (req: Request, res: Response) => {
         // 3. Bulk Create (Efficient)
         await Notification.bulkCreate(notifications);
 
-        // 4. Log to History
+        // 4. Send Batch Push Notifications
+        const userTokens = users
+            .map(u => u.pushToken)
+            .filter(token => token !== null && token !== undefined && token !== '');
+
+        if (userTokens.length > 0) {
+            await sendBatchPushNotifications(
+                userTokens as string[],
+                title,
+                message
+            );
+        }
+
+        // 5. Log to History
         await BroadcastLog.create({
             title,
             message,

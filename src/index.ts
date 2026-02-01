@@ -65,7 +65,6 @@ app.use('/api/diseases', diseaseRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/blogs', require('./routes/blog.routes').default);
 

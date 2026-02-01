@@ -38,8 +38,8 @@ export const sendOtp = async (req: Request, res: Response) => {
             success: true,
             method: deliveryResult.method // Sending method to frontend
         });
-    } else {
-        console.error('Failed to send OTP via all methods. FALLBACK MODE ACTIVE.');
+    } else if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to send OTP via all methods. FALLBACK MODE ACTIVE (DEV ONLY).');
         // FALLBACK FOR DEV/NO-CREDITS: Return 200 anyway and log the OTP
         // console.log(`[DEV BYPASS] OTP for ${phoneNumber} is: ${otp}`);
         // console.timeEnd('OTP-Total-Request-Time');
@@ -47,6 +47,11 @@ export const sendOtp = async (req: Request, res: Response) => {
             message: 'OTP sent (Dev Bypass). Check server logs for code.',
             success: true,
             devOtp: otp // Optional: send back in response for easier testing if desired, but console is safer
+        });
+    } else {
+        res.status(500).json({
+            message: 'Failed to send OTP via any method. Please try again later.',
+            success: false
         });
     }
 };

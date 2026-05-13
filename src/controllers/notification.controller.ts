@@ -3,6 +3,7 @@ import Notification from '../models/notification.model';
 import User from '../models/user.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { sendPushNotification, sendBatchPushNotifications } from '../services/notification.service';
+import BroadcastLog from '../models/broadcastLog.model';
 
 // Get user notifications (for app user)
 export const getUserNotifications = async (req: AuthRequest, res: Response) => {
@@ -64,7 +65,6 @@ export const createNotification = async (userId: number, title: string, message:
 export const sendNotification = async (req: Request, res: Response) => {
     try {
         const { userId, title, message } = req.body;
-        // console.log(`Sending notification to user ${userId}: ${title}`);
 
         await Notification.create({
             userId,
@@ -91,7 +91,6 @@ export const sendNotification = async (req: Request, res: Response) => {
     }
 };
 
-import BroadcastLog from '../models/broadcastLog.model';
 
 // Broadcast to ALL users
 export const broadcastNotification = async (req: Request, res: Response) => {

@@ -9,6 +9,8 @@ class Schedule extends Model {
     public description!: string;
     public dayNumber!: number;
     public status!: 'upcoming' | 'completed';
+    public stageImages!: string[];
+    public productImages!: string[];
 }
 
 Schedule.init({
@@ -28,6 +30,28 @@ Schedule.init({
     status: {
         type: DataTypes.ENUM('upcoming', 'completed'),
         defaultValue: 'upcoming'
+    },
+    stageImages: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get() {
+            const rawValue = this.getDataValue('stageImages');
+            return rawValue ? JSON.parse(rawValue as unknown as string) : [];
+        },
+        set(value: string[]) {
+            this.setDataValue('stageImages', JSON.stringify(value) as unknown as string[]);
+        }
+    },
+    productImages: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        get() {
+            const rawValue = this.getDataValue('productImages');
+            return rawValue ? JSON.parse(rawValue as unknown as string) : [];
+        },
+        set(value: string[]) {
+            this.setDataValue('productImages', JSON.stringify(value) as unknown as string[]);
+        }
     }
 }, {
     sequelize,

@@ -3,9 +3,6 @@ import Product from '../models/product.model';
 
 export const createProduct = async (req: Request, res: Response) => {
     try {
-        // console.log("createProduct: Receive body:", req.body);
-        // console.log("createProduct: Receive files:", req.files);
-
         let imageUrls: string[] = [];
 
         if (req.files && Array.isArray(req.files)) {
@@ -18,7 +15,6 @@ export const createProduct = async (req: Request, res: Response) => {
         };
 
         const product = await Product.create(productData);
-        // console.log("createProduct: Success:", product.id);
         res.status(201).json(product);
     } catch (error) {
         console.error("Error creating product:", error);
@@ -72,22 +68,7 @@ export const updateProduct = async (req: Request, res: Response) => {
         }
 
         // Combine existing (preserved) images and new uploads
-        // If no images sent in body and no files, it arguably keeps nothing? 
-        // Or should it default to *current* DB images if nothing sent?
-        // Usually, in PUT/PATCH, if field is missing, keep old. If sent (empty), clear.
-        // But with FormData, it's hard to "omit". 
-        // Let's assume if client sends ANY image data (text or file), we update. 
-        // If client sends NOTHING, we could keep old. 
-        // But let's simplify: Helper function constructs list.
-
         let finalImages = [...existingImages, ...newImageUrls];
-
-        // If user deleted all images in UI, existingImages would be empty.
-        // If they didn't touch images, UI should send existing ones back.
-        // So this logic holds.
-
-        // Special case: if we want to "keep" old images when NO changes made,
-        // CLIENT must send them.
 
         const updateData = {
             ...req.body,

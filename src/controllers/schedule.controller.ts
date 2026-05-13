@@ -5,7 +5,6 @@ import Schedule from '../models/schedule.model';
 export const getPlotSchedules = async (req: Request, res: Response) => {
     try {
         const { plotId } = req.params;
-        // console.log(`[SCHEDULE] Fetching schedules for plotId: ${plotId}`);
         const schedules = await Schedule.findAll({
             where: { plotId },
             order: [['dayNumber', 'ASC']]
@@ -20,12 +19,14 @@ export const getPlotSchedules = async (req: Request, res: Response) => {
 // Create a schedule (Internal/Admin use)
 export const createSchedule = async (req: Request, res: Response) => {
     try {
-        const { plotId, title, description, dayNumber } = req.body;
+        const { plotId, title, description, dayNumber, stageImages = [], productImages = [] } = req.body;
         const newSchedule = await Schedule.create({
             plotId,
             title,
             description,
-            dayNumber
+            dayNumber,
+            stageImages,
+            productImages
         });
         res.status(201).json(newSchedule);
     } catch (error) {
@@ -37,12 +38,18 @@ export const createSchedule = async (req: Request, res: Response) => {
 export const updateSchedule = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, description, dayNumber } = req.body;
+        const { title, description, dayNumber, stageImages, productImages } = req.body;
         const schedule = await Schedule.findByPk(id);
         if (!schedule) {
             return res.status(404).json({ message: 'Schedule not found' });
         }
-        await schedule.update({ title, description, dayNumber });
+        await schedule.update({
+            title,
+            description,
+            dayNumber,
+            ...(stageImages !== undefined && { stageImages }),
+            ...(productImages !== undefined && { productImages })
+        });
         res.status(200).json(schedule);
     } catch (error) {
         res.status(500).json({ message: 'Error updating schedule', error: (error as any).message });
@@ -77,11 +84,6 @@ export const updateScheduleStatus = async (req: Request, res: Response) => {
         if (!schedule) {
             return res.status(404).json({ message: 'Schedule not found' });
         }
-
-        // Removed validation to allow status toggle
-        // if (schedule.status === 'completed') {
-        //    return res.status(400).json({ message: 'Cannot change status of a completed schedule' });
-        // }
 
         schedule.status = status;
         await schedule.save();

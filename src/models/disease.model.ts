@@ -13,6 +13,7 @@ class Disease extends Model {
     public status!: string;
     public solution!: string | null;
     public consultantName!: string | null;
+    public suggestedProducts!: any[] | null;
 }
 
 Disease.init({
@@ -46,7 +47,8 @@ Disease.init({
     },
     status: { type: DataTypes.STRING, defaultValue: 'pending' },
     solution: { type: DataTypes.TEXT, allowNull: true },
-    consultantName: { type: DataTypes.STRING, allowNull: true }
+    consultantName: { type: DataTypes.STRING, allowNull: true },
+    suggestedProducts: { type: DataTypes.JSON, allowNull: true }
 }, {
     sequelize,
     modelName: 'Disease',

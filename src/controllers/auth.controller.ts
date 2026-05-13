@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import User from '../models/user.model';
+import Customer from '../models/customer.model';
 import { generateOtp, verifyOtp } from '../services/otp.service';
 import { sendOtpMessage } from '../services/communication.service';
 import { AuthRequest } from '../middleware/auth.middleware';
@@ -9,7 +10,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key_123';
 
 // Step 1: Request OTP
 export const sendOtp = async (req: Request, res: Response) => {
-    // console.time('OTP-Total-Request-Time');
     const { phoneNumber } = req.body;
 
     if (!phoneNumber) {
@@ -17,32 +17,35 @@ export const sendOtp = async (req: Request, res: Response) => {
     }
 
     // Mock OTP Generation
-    const otp = generateOtp(phoneNumber);
+    const otpResult = generateOtp(phoneNumber);
+
+    if (!otpResult.success || !otpResult.otp) {
+        return res.status(429).json({
+            message: otpResult.message || 'Too many requests. Please try again later.',
+            success: false
+        });
+    }
+
+    const otp = otpResult.otp;
+    console.log(`[OTP] Generated successfully for ${phoneNumber}: ${otp}`);
 
     // Real OTP Sending
     let deliveryResult = { success: false, method: 'none' };
 
     try {
-        // console.time('OTP-Service-Call');
         deliveryResult = await sendOtpMessage(phoneNumber, otp);
-        // console.timeEnd('OTP-Service-Call');
     } catch (e) {
         console.error('OTP Send Error Exception:', e);
     }
 
     if (deliveryResult.success) {
-        // console.log(`OTP sent via ${deliveryResult.method}`);
-        // console.timeEnd('OTP-Total-Request-Time');
         res.status(200).json({
             message: `OTP sent successfully via ${deliveryResult.method}`,
             success: true,
-            method: deliveryResult.method // Sending method to frontend
+            method: deliveryResult.method
         });
     } else if (process.env.NODE_ENV !== 'production') {
         console.error('Failed to send OTP via all methods. FALLBACK MODE ACTIVE (DEV ONLY).');
-        // FALLBACK FOR DEV/NO-CREDITS: Return 200 anyway and log the OTP
-        // console.log(`[DEV BYPASS] OTP for ${phoneNumber} is: ${otp}`);
-        // console.timeEnd('OTP-Total-Request-Time');
         res.status(200).json({
             message: 'OTP sent (Dev Bypass). Check server logs for code.',
             success: true,
@@ -119,6 +122,12 @@ export const register = async (req: Request, res: Response) => {
             role: role || 'farmer',
             isVerified: true
         });
+
+        // Retroactively link to existing customer profile if admin made a bill for them previously
+        await Customer.update(
+            { userId: newUser.id },
+            { where: { phoneNumber } }
+        );
 
         const token = jwt.sign({ id: newUser.id, phoneNumber: newUser.phoneNumber }, JWT_SECRET, { expiresIn: '7d' });
 

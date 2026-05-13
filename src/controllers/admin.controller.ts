@@ -3,7 +3,7 @@ import User from '../models/user.model';
 import Plot from '../models/plot.model';
 import Disease from '../models/disease.model';
 import Product from '../models/product.model';
-import Order from '../models/order.model';
+import Invoice from '../models/invoice.model';
 import { Op } from 'sequelize';
 
 export const getDashboardStats = async (req: Request, res: Response) => {
@@ -34,7 +34,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 export const getShopStats = async (req: Request, res: Response) => {
     try {
         const productsCount = await Product.count();
-        const ordersCount = await Order.count();
+        const ordersCount = await Invoice.count({ where: { status: 'online_pending' } });
 
         // Count low stock (e.g., quantity < 50)
         // Adjust threshold as needed
@@ -44,9 +44,9 @@ export const getShopStats = async (req: Request, res: Response) => {
             }
         });
 
-        // Calculate Revenue (Sum of totalAmount for non-cancelled orders)
+        // Calculate Revenue (Sum of netAmount for non-cancelled orders)
         // Note: SQLite sum might return string
-        const revenueResult = await Order.sum('totalAmount', {
+        const revenueResult = await Invoice.sum('netAmount', {
             where: {
                 status: { [Op.ne]: 'cancelled' }
             }

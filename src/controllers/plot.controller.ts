@@ -46,7 +46,6 @@ export const createPlot = async (req: AuthRequest, res: Response) => { // Use Au
 export const getUserPlots = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user.id;
-        // console.log(`Fetching active plots for user: ${userId}`);
         const plots = await Plot.findAll({
             where: {
                 userId,

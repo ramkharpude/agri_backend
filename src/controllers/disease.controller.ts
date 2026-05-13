@@ -67,7 +67,7 @@ export const getDiseaseDetails = async (req: Request, res: Response) => {
 export const diagnoseDisease = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { solution } = req.body;
+        const { solution, suggestedProducts } = req.body;
         const consultantName = req.user.fullName; // Assuming admin's name is used
 
         const report = await Disease.findByPk(id);
@@ -78,6 +78,7 @@ export const diagnoseDisease = async (req: AuthRequest, res: Response) => {
         report.solution = solution;
         report.consultantName = consultantName;
         report.status = 'resolved';
+        report.suggestedProducts = suggestedProducts || null;
         await report.save();
 
         // Send Push Notification

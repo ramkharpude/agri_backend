@@ -21,7 +21,6 @@ export const sendPushNotification = async (pushToken: string, title: string, bod
         for (let chunk of chunks) {
             try {
                 const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-                // console.log('Push notification sent:', ticketChunk);
             } catch (error) {
                 console.error('Error sending chunk:', error);
             }
@@ -52,7 +51,6 @@ export const sendBatchPushNotifications = async (tokens: string[], title: string
     for (let chunk of chunks) {
         try {
             let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-            // console.log('Chunk sent', ticketChunk);
             tickets.push(...ticketChunk);
         } catch (error) {
             console.error('Error sending chunk', error);

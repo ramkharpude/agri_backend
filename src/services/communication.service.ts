@@ -78,7 +78,7 @@ const sendSms = async (phoneNumber: string, message: string): Promise<boolean> =
  * Main OTP Sending Function with Fallback Logic
  */
 export const sendOtpMessage = async (phoneNumber: string, otp: string) => {
-    const message = `Your AgriConsult Pro OTP is: ${otp}. Do not share this with anyone.`;
+    const message = `Your RK Consultancy OTP is: ${otp}. Do not share this with anyone.`;
 
     // 1. Try WhatsApp
     const whatsappSuccess = await sendWhatsApp(phoneNumber, message);

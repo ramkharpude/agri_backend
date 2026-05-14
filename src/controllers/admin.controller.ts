@@ -5,12 +5,14 @@ import Disease from '../models/disease.model';
 import Product from '../models/product.model';
 import Invoice from '../models/invoice.model';
 import { Op } from 'sequelize';
+import { sendPushNotification } from '../services/notification.service';
 
 export const getDashboardStats = async (req: Request, res: Response) => {
     try {
-        const usersCount = await User.count();
+        const usersCount = await User.count({ where: { role: 'farmer' } });
         const plotsCount = await Plot.count({ where: { status: 'active' } });
         const diseasesCount = await Disease.count();
+        const pendingConsultantsCount = await User.count({ where: { role: 'consultant', isApproved: false } });
 
         // Get recent 5 pending diseases
         const recentDiseases = await Disease.findAll({
@@ -23,6 +25,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
             usersCount,
             plotsCount,
             diseasesCount,
+            pendingConsultantsCount,
             recentDiseases
         });
     } catch (error) {
@@ -158,3 +161,70 @@ export const togglePlotStatus = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error updating plot status', error: (error as any).message });
     }
 };
+
+// ─── Consultant Management ────────────────────────────────────────────────────
+
+export const getPendingConsultants = async (req: Request, res: Response) => {
+    try {
+        const consultants = await User.findAll({
+            where: { role: 'consultant', isApproved: false },
+            order: [['createdAt', 'DESC']]
+        });
+        res.status(200).json(consultants);
+    } catch (error) {
+        console.error('Get Pending Consultants Error:', error);
+        res.status(500).json({ message: 'Error fetching consultants', error: (error as any).message });
+    }
+};
+
+export const approveConsultant = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findByPk(id);
+        if (!user || user.role !== 'consultant') {
+            return res.status(404).json({ message: 'Consultant not found' });
+        }
+        user.isApproved = true;
+        await user.save();
+
+        // Notify consultant
+        if (user.pushToken) {
+            await sendPushNotification(
+                user.pushToken,
+                '✅ Account Approved!',
+                'Your consultant account has been verified. You can now start consulting.'
+            );
+        }
+
+        res.status(200).json({ message: 'Consultant approved', user });
+    } catch (error) {
+        console.error('Approve Consultant Error:', error);
+        res.status(500).json({ message: 'Error approving consultant', error: (error as any).message });
+    }
+};
+
+export const rejectConsultant = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findByPk(id);
+        if (!user || user.role !== 'consultant') {
+            return res.status(404).json({ message: 'Consultant not found' });
+        }
+
+        // Notify before deleting
+        if (user.pushToken) {
+            await sendPushNotification(
+                user.pushToken,
+                '❌ Account Rejected',
+                'Your consultant registration was not approved. Please contact admin for details.'
+            );
+        }
+
+        await user.destroy();
+        res.status(200).json({ message: 'Consultant rejected and removed' });
+    } catch (error) {
+        console.error('Reject Consultant Error:', error);
+        res.status(500).json({ message: 'Error rejecting consultant', error: (error as any).message });
+    }
+};
+

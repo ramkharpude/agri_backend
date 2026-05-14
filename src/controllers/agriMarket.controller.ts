@@ -7,13 +7,13 @@ import { AuthRequest } from '../middleware/auth.middleware';
 // Create a new Agri Market listing
 export const createListing = async (req: AuthRequest, res: Response) => {
     try {
-        const { farmerName, contactNo, fullAddress, cropName, variety, areaInAcres, category } = req.body;
+        const { farmerName, contactNo, fullAddress, cropName, variety, areaInAcres, category, agentName, agentContactNo } = req.body;
         const userId = req.user.id;
+        const userRole = req.user.role;
 
         let imageUrls: string[] = [];
 
         if (req.files && Array.isArray(req.files)) {
-            // Multer-storage-cloudinary puts the URL in file.path
             imageUrls = (req.files as Express.Multer.File[]).map(file => file.path);
         }
 
@@ -27,7 +27,10 @@ export const createListing = async (req: AuthRequest, res: Response) => {
             areaInAcres: parseFloat(areaInAcres),
             category,
             photos: imageUrls,
-            status: 'available'
+            status: 'available',
+            postedBy: userRole === 'agent' ? 'agent' : 'farmer',
+            agentName: userRole === 'agent' ? (agentName || req.user.fullName) : null,
+            agentContactNo: userRole === 'agent' ? (agentContactNo || req.user.phoneNumber) : null
         });
 
         res.status(201).json(newListing);
@@ -61,6 +64,21 @@ export const getUserListings = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error('Get User Listings Error:', error);
         res.status(500).json({ message: 'Error fetching history', error: (error as any).message });
+    }
+};
+
+// Get agent's own listings (same as getUserListings but aliased for clarity)
+export const getAgentListings = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user.id;
+        const listings = await AgriMarket.findAll({
+            where: { userId },
+            order: [['createdAt', 'DESC']]
+        });
+        res.status(200).json(listings);
+    } catch (error) {
+        console.error('Get Agent Listings Error:', error);
+        res.status(500).json({ message: 'Error fetching agent listings', error: (error as any).message });
     }
 };
 

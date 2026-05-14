@@ -15,6 +15,9 @@ class AgriMarket extends Model {
     public photos!: string[]; // Array of URLs
     public status!: string;
     public soldAt!: Date | null;
+    public postedBy!: string;
+    public agentName!: string | null;
+    public agentContactNo!: string | null;
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
 }
@@ -69,6 +72,21 @@ AgriMarket.init({
     soldAt: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    postedBy: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'farmer'
+    },
+    agentName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null
+    },
+    agentContactNo: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null
     }
 }, {
     sequelize,

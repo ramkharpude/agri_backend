@@ -1,5 +1,5 @@
 import express from 'express';
-import { createListing, getUserListings, getAllListings, updateListingStatus, updateListing, deleteListing, getUserSoldHistory, getAdminSoldHistory } from '../controllers/agriMarket.controller';
+import { createListing, getUserListings, getAllListings, updateListingStatus, updateListing, deleteListing, getUserSoldHistory, getAdminSoldHistory, getAgentListings } from '../controllers/agriMarket.controller';
 import { protect } from '../middleware/auth.middleware';
 import { upload } from '../middleware/upload.middleware';
 
@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post('/', protect, upload.array('images', 10), createListing);
 router.get('/user', protect, getUserListings);
+router.get('/agent', protect, getAgentListings);
 router.get('/admin', protect, getAllListings);
 router.get('/admin/history', protect, getAdminSoldHistory);
 router.put('/:id/status', protect, updateListingStatus);

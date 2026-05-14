@@ -9,7 +9,9 @@ class User extends Model {
     public role!: string;
     public isVerified!: boolean;
     public pushToken!: string | null;
-
+    public specialtyCrops!: string[] | null;
+    public profilePhoto!: string | null;
+    public isApproved!: boolean;
 }
 
 User.init({
@@ -23,7 +25,6 @@ User.init({
         allowNull: false,
         unique: true
     },
-
     fullName: {
         type: DataTypes.STRING,
         allowNull: false
@@ -43,6 +44,27 @@ User.init({
     pushToken: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    specialtyCrops: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null,
+        get() {
+            const rawValue = this.getDataValue('specialtyCrops');
+            return rawValue ? JSON.parse(rawValue) : null;
+        },
+        set(value: string[] | null) {
+            this.setDataValue('specialtyCrops', value ? JSON.stringify(value) : null);
+        }
+    },
+    profilePhoto: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null
+    },
+    isApproved: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
     }
 }, {
     sequelize,

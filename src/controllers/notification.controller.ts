@@ -156,3 +156,27 @@ export const getBroadcastHistory = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to fetch history', error: (error as any).message });
     }
 };
+
+// Get unread notification count for authenticated user
+export const getUnreadCount = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user.id;
+        const count = await Notification.count({ where: { userId, isRead: false } });
+        res.status(200).json({ count });
+    } catch (error) {
+        console.error('Get Unread Count Error:', error);
+        res.status(500).json({ message: 'Error fetching unread count', error: (error as any).message });
+    }
+};
+
+// Mark all notifications as read for authenticated user
+export const markAllAsRead = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user.id;
+        await Notification.update({ isRead: true }, { where: { userId, isRead: false } });
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Mark All Read Error:', error);
+        res.status(500).json({ message: 'Error marking notifications as read', error: (error as any).message });
+    }
+};

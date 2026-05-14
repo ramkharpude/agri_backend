@@ -10,6 +10,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { sendPushNotification } from '../services/notification.service';
 import Notification from '../models/notification.model';
 import User from '../models/user.model';
+import { getAdminPushToken } from './auth.controller';
 
 // ─── Generate Invoice Number ──────────────────────────────────────────────────
 const generateInvoiceNumber = async (): Promise<string> => {
@@ -474,6 +475,16 @@ export const createOnlineOrder = async (req: AuthRequest, res: Response) => {
                 relatedId: invoice.id.toString(),
                 isRead: false
             });
+
+            // Send push notification to admin
+            const adminToken = getAdminPushToken();
+            if (adminToken) {
+                await sendPushNotification(
+                    adminToken,
+                    '🛒 New Online Order',
+                    `${customer.name} placed an order (${invoiceNumber}) for ₹${totalAmount}`
+                );
+            }
         } catch (notifError) {
             console.error('Admin notification failed (non-critical):', notifError);
         }

@@ -24,6 +24,7 @@ import billingRoutes from './routes/billing.routes';
 import erpPaymentRoutes from './routes/erpPayment.routes';
 import reportRoutes from './routes/report.routes';
 import stockMovementRoutes from './routes/stockMovement.routes';
+import plotAssignmentRoutes from './routes/plotAssignment.routes';
 
 dotenv.config();
 process.env.TZ = 'Asia/Kolkata'; // Set Timezone to India Standard Time
@@ -74,6 +75,7 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/erp-payments', erpPaymentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/stock-movements', stockMovementRoutes);
+app.use('/api/plot-assignments', plotAssignmentRoutes);
 
 import sequelize from './config/database';
 
@@ -89,6 +91,7 @@ import './models/invoiceItem.model';
 import './models/ledgerEntry.model';
 import './models/erpPayment.model';
 import './models/stockMovement.model';
+import './models/plotAssignment.model';
 
 // Sync Database
 sequelize.sync({ alter: true }).then(() => {

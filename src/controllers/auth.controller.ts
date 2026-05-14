@@ -8,6 +8,10 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key_123';
 
+// In-memory store for admin push token (admin is not a DB user)
+let adminPushToken: string | null = null;
+export const getAdminPushToken = () => adminPushToken;
+
 // Step 1: Request OTP
 export const sendOtp = async (req: Request, res: Response) => {
     const { phoneNumber } = req.body;
@@ -84,7 +88,17 @@ export const verifyOtpAndLogin = async (req: Request, res: Response) => {
             return res.status(200).json({
                 message: 'Login successful',
                 token,
-                user,
+                user: {
+                    id: user.id,
+                    phoneNumber: user.phoneNumber,
+                    fullName: user.fullName,
+                    address: user.address,
+                    role: user.role,
+                    isVerified: user.isVerified,
+                    isApproved: user.isApproved,
+                    specialtyCrops: user.specialtyCrops,
+                    profilePhoto: user.profilePhoto
+                },
                 isNewUser: false
             });
         } else {
@@ -103,7 +117,7 @@ export const verifyOtpAndLogin = async (req: Request, res: Response) => {
 
 // Step 3: Complete Registration (if new user)
 export const register = async (req: Request, res: Response) => {
-    const { phoneNumber, fullName, address, role } = req.body;
+    const { phoneNumber, fullName, address, role, specialtyCrops, profilePhoto } = req.body;
 
     if (!phoneNumber || !fullName || !address) {
         return res.status(400).json({ message: 'Phone, Name, and Address are required' });
@@ -115,26 +129,45 @@ export const register = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
+        const userRole = role || 'farmer';
+
         const newUser = await User.create({
             phoneNumber,
             fullName,
             address,
-            role: role || 'farmer',
-            isVerified: true
+            role: userRole,
+            isVerified: true,
+            specialtyCrops: specialtyCrops || null,
+            profilePhoto: profilePhoto || null,
+            isApproved: userRole === 'consultant' ? false : true
         });
 
         // Retroactively link to existing customer profile if admin made a bill for them previously
-        await Customer.update(
-            { userId: newUser.id },
-            { where: { phoneNumber } }
-        );
+        if (userRole === 'farmer') {
+            await Customer.update(
+                { userId: newUser.id },
+                { where: { phoneNumber } }
+            );
+        }
 
         const token = jwt.sign({ id: newUser.id, phoneNumber: newUser.phoneNumber }, JWT_SECRET, { expiresIn: '7d' });
 
         res.status(201).json({
-            message: 'Registration successful',
+            message: userRole === 'consultant' 
+                ? 'Registration successful. Awaiting admin approval.' 
+                : 'Registration successful',
             token,
-            user: newUser
+            user: {
+                id: newUser.id,
+                phoneNumber: newUser.phoneNumber,
+                fullName: newUser.fullName,
+                address: newUser.address,
+                role: newUser.role,
+                isVerified: newUser.isVerified,
+                isApproved: newUser.isApproved,
+                specialtyCrops: newUser.specialtyCrops,
+                profilePhoto: newUser.profilePhoto
+            }
         });
 
     } catch (error) {
@@ -196,5 +229,19 @@ export const updateFcmToken = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error('Update Token Error:', error);
         res.status(500).json({ message: 'Error updating token' });
+    }
+};
+
+export const updateAdminPushToken = async (req: AuthRequest, res: Response) => {
+    try {
+        const { pushToken } = req.body;
+        if (pushToken) {
+            adminPushToken = pushToken;
+            console.log('[Admin Push Token] Updated:', pushToken);
+        }
+        res.status(200).json({ message: 'Admin push token updated successfully' });
+    } catch (error) {
+        console.error('Update Admin Push Token Error:', error);
+        res.status(500).json({ message: 'Error updating admin push token' });
     }
 };

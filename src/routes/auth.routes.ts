@@ -1,5 +1,5 @@
 import express from 'express';
-import { sendOtp, verifyOtpAndLogin, register, checkUser, adminLogin, updateFcmToken } from '../controllers/auth.controller';
+import { sendOtp, verifyOtpAndLogin, register, checkUser, adminLogin, updateFcmToken, updateAdminPushToken } from '../controllers/auth.controller';
 
 const router = express.Router();
 
@@ -14,5 +14,6 @@ router.post('/admin-login', adminLogin);
 import { protect as authenticate } from '../middleware/auth.middleware';
 
 router.post('/update-fcm-token', authenticate, updateFcmToken);
+router.post('/admin-push-token', authenticate, updateAdminPushToken);
 
 export default router;

@@ -1,10 +1,12 @@
 import express from 'express';
-import { getUserNotifications, getNotificationsForUser, markAsRead, sendNotification, broadcastNotification, getBroadcastHistory } from '../controllers/notification.controller';
+import { getUserNotifications, getNotificationsForUser, markAsRead, sendNotification, broadcastNotification, getBroadcastHistory, getUnreadCount, markAllAsRead } from '../controllers/notification.controller';
 import { protect } from '../middleware/auth.middleware';
 
 const router = express.Router();
 
 router.get('/', protect, getUserNotifications);
+router.get('/unread-count', protect, getUnreadCount);
+router.put('/mark-all-read', protect, markAllAsRead);
 router.get('/user/:userId', getNotificationsForUser); // Admin route
 router.put('/:id/read', protect, markAsRead);
 router.post('/send', sendNotification); // Single user

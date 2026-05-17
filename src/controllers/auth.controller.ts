@@ -234,7 +234,7 @@ export const checkUser = async (req: Request, res: Response) => {
     const { phoneNumber } = req.body;
     try {
         const user = await User.findOne({ where: { phoneNumber } });
-        res.status(200).json({ exists: !!user });
+        res.status(200).json({ exists: !!user, role: user ? user.role : null });
     } catch (error) {
         console.error('Check User Error:', error);
         res.status(500).json({ message: 'Server error' });

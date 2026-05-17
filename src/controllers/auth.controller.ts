@@ -152,6 +152,11 @@ export const register = async (req: Request, res: Response) => {
                 // Append the new role
                 existingUser.role = existingUser.role ? `${existingUser.role},${userRole}` : userRole;
                 
+                // Require admin approval if they are adding the consultant role
+                if (userRole === 'consultant') {
+                    existingUser.isApproved = false;
+                }
+                
                 // If they are adding a consultant role, we update their specialty crops if provided
                 if (specialtyCrops && Array.isArray(specialtyCrops)) {
                     const existingCrops = existingUser.specialtyCrops || [];
@@ -161,8 +166,6 @@ export const register = async (req: Request, res: Response) => {
                     }
                 }
                 
-                // Note: We leave isApproved as is. If they were already an approved farmer, they stay approved.
-                // A more complex system might require separate approval status per role.
                 await existingUser.save();
 
                 const token = jwt.sign({ id: existingUser.id, phoneNumber: existingUser.phoneNumber }, JWT_SECRET, { expiresIn: '7d' });

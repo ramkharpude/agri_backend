@@ -11,7 +11,7 @@ export const assignPlotToConsultant = async (req: Request, res: Response) => {
 
         // Verify consultant exists and has correct role
         const consultant = await User.findByPk(consultantId);
-        if (!consultant || consultant.role !== 'consultant') {
+        if (!consultant || !consultant.role || !consultant.role.includes('consultant')) {
             return res.status(400).json({ message: 'Invalid consultant' });
         }
 
@@ -83,8 +83,9 @@ export const getPlotConsultants = async (req: Request, res: Response) => {
 // Admin: Get all approved consultants (for assignment dropdown)
 export const getApprovedConsultants = async (req: Request, res: Response) => {
     try {
+        const { Op } = require('sequelize');
         const consultants = await User.findAll({
-            where: { role: 'consultant', isApproved: true },
+            where: { role: { [Op.like]: '%consultant%' }, isApproved: true },
             attributes: ['id', 'fullName', 'phoneNumber', 'specialtyCrops', 'profilePhoto']
         });
         res.status(200).json(consultants);

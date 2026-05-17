@@ -9,10 +9,10 @@ import { sendPushNotification } from '../services/notification.service';
 
 export const getDashboardStats = async (req: Request, res: Response) => {
     try {
-        const usersCount = await User.count({ where: { role: 'farmer' } });
+        const usersCount = await User.count({ where: { role: { [Op.like]: '%farmer%' } } });
         const plotsCount = await Plot.count({ where: { status: 'active' } });
         const diseasesCount = await Disease.count();
-        const pendingConsultantsCount = await User.count({ where: { role: 'consultant', isApproved: false } });
+        const pendingConsultantsCount = await User.count({ where: { role: { [Op.like]: '%consultant%' }, isApproved: false } });
 
         // Get recent 5 pending diseases
         const recentDiseases = await Disease.findAll({
@@ -167,7 +167,7 @@ export const togglePlotStatus = async (req: Request, res: Response) => {
 export const getPendingConsultants = async (req: Request, res: Response) => {
     try {
         const consultants = await User.findAll({
-            where: { role: 'consultant', isApproved: false },
+            where: { role: { [Op.like]: '%consultant%' }, isApproved: false },
             order: [['createdAt', 'DESC']]
         });
         res.status(200).json(consultants);
@@ -181,7 +181,7 @@ export const approveConsultant = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const user = await User.findByPk(id);
-        if (!user || user.role !== 'consultant') {
+        if (!user || !user.role || !user.role.includes('consultant')) {
             return res.status(404).json({ message: 'Consultant not found' });
         }
         user.isApproved = true;
@@ -207,7 +207,7 @@ export const rejectConsultant = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const user = await User.findByPk(id);
-        if (!user || user.role !== 'consultant') {
+        if (!user || !user.role || !user.role.includes('consultant')) {
             return res.status(404).json({ message: 'Consultant not found' });
         }
 

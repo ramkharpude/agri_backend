@@ -28,9 +28,9 @@ export const createListing = async (req: AuthRequest, res: Response) => {
             category,
             photos: imageUrls,
             status: 'available',
-            postedBy: userRole === 'agent' ? 'agent' : 'farmer',
-            agentName: userRole === 'agent' ? (agentName || req.user.fullName) : null,
-            agentContactNo: userRole === 'agent' ? (agentContactNo || req.user.phoneNumber) : null
+            postedBy: userRole && userRole.includes('agent') ? 'agent' : 'farmer',
+            agentName: userRole && userRole.includes('agent') ? (agentName || req.user.fullName) : null,
+            agentContactNo: userRole && userRole.includes('agent') ? (agentContactNo || req.user.phoneNumber) : null
         });
 
         res.status(201).json(newListing);

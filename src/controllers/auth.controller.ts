@@ -124,12 +124,65 @@ export const register = async (req: Request, res: Response) => {
     }
 
     try {
-        const existingUser = await User.findOne({ where: { phoneNumber } });
-        if (existingUser) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
-
         const userRole = role || 'farmer';
+        const existingUser = await User.findOne({ where: { phoneNumber } });
+        
+        if (existingUser) {
+            const rolesArray = existingUser.role ? existingUser.role.split(',') : [];
+            
+            if (rolesArray.includes(userRole)) {
+                // User already has this role, treat as successful login
+                const token = jwt.sign({ id: existingUser.id, phoneNumber: existingUser.phoneNumber }, JWT_SECRET, { expiresIn: '7d' });
+                return res.status(200).json({
+                    message: 'User already has this role. Login successful.',
+                    token,
+                    user: {
+                        id: existingUser.id,
+                        phoneNumber: existingUser.phoneNumber,
+                        fullName: existingUser.fullName,
+                        address: existingUser.address,
+                        role: existingUser.role,
+                        isVerified: existingUser.isVerified,
+                        isApproved: existingUser.isApproved,
+                        specialtyCrops: existingUser.specialtyCrops,
+                        profilePhoto: existingUser.profilePhoto
+                    }
+                });
+            } else {
+                // Append the new role
+                existingUser.role = existingUser.role ? `${existingUser.role},${userRole}` : userRole;
+                
+                // If they are adding a consultant role, we update their specialty crops if provided
+                if (specialtyCrops && Array.isArray(specialtyCrops)) {
+                    const existingCrops = existingUser.specialtyCrops || [];
+                    const newCrops = specialtyCrops.filter((c: string) => !existingCrops.includes(c));
+                    if (newCrops.length > 0) {
+                        existingUser.specialtyCrops = [...existingCrops, ...newCrops];
+                    }
+                }
+                
+                // Note: We leave isApproved as is. If they were already an approved farmer, they stay approved.
+                // A more complex system might require separate approval status per role.
+                await existingUser.save();
+
+                const token = jwt.sign({ id: existingUser.id, phoneNumber: existingUser.phoneNumber }, JWT_SECRET, { expiresIn: '7d' });
+                return res.status(200).json({
+                    message: `Role ${userRole} added successfully.`,
+                    token,
+                    user: {
+                        id: existingUser.id,
+                        phoneNumber: existingUser.phoneNumber,
+                        fullName: existingUser.fullName,
+                        address: existingUser.address,
+                        role: existingUser.role,
+                        isVerified: existingUser.isVerified,
+                        isApproved: existingUser.isApproved,
+                        specialtyCrops: existingUser.specialtyCrops,
+                        profilePhoto: existingUser.profilePhoto
+                    }
+                });
+            }
+        }
 
         const newUser = await User.create({
             phoneNumber,

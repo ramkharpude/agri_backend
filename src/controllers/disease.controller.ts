@@ -92,7 +92,7 @@ export const diagnoseDisease = async (req: AuthRequest, res: Response) => {
         const { solution, suggestedProducts } = req.body;
         
         // Build consultant name: "Name (RK Consaltancy)"
-        const consultantName = req.user.role === 'consultant' 
+        const consultantName = (req.user.role && req.user.role.includes('consultant')) 
             ? `${req.user.fullName} (RK Consaltancy)` 
             : req.user.fullName || 'RK Consaltancy';
 
@@ -102,7 +102,7 @@ export const diagnoseDisease = async (req: AuthRequest, res: Response) => {
         }
 
         // If consultant, verify they are assigned to this plot
-        if (req.user.role === 'consultant' && report.plotId) {
+        if (req.user.role && req.user.role.includes('consultant') && report.plotId) {
             const assignment = await PlotAssignment.findOne({
                 where: { consultantId: req.user.id, plotId: report.plotId }
             });

@@ -5,6 +5,7 @@ class GeneralSchedule extends Model {
     public id!: number;
     public cropName!: string;
     public variety!: string;
+    public userId!: number;
 }
 
 GeneralSchedule.init({
@@ -14,7 +15,8 @@ GeneralSchedule.init({
         primaryKey: true
     },
     cropName: { type: DataTypes.STRING, allowNull: false },
-    variety: { type: DataTypes.STRING, allowNull: false }
+    variety: { type: DataTypes.STRING, allowNull: false },
+    userId: { type: DataTypes.INTEGER, allowNull: true } // Nullable for backwards compatibility with existing templates
 }, {
     sequelize,
     modelName: 'GeneralSchedule',

@@ -7,12 +7,14 @@ import {
     deleteGeneralSchedule
 } from '../controllers/generalSchedule.controller';
 
+import { protect } from '../middleware/auth.middleware';
+
 const router = express.Router();
 
-router.post('/', createGeneralSchedule);
-router.get('/', getAllGeneralSchedules);
-router.get('/:id', getGeneralScheduleById);
-router.put('/:id', updateGeneralSchedule);
-router.delete('/:id', deleteGeneralSchedule);
+router.post('/', protect, createGeneralSchedule);
+router.get('/', protect, getAllGeneralSchedules);
+router.get('/:id', protect, getGeneralScheduleById);
+router.put('/:id', protect, updateGeneralSchedule);
+router.delete('/:id', protect, deleteGeneralSchedule);
 
 export default router;

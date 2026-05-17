@@ -1,10 +1,11 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth.middleware';
 import GeneralSchedule from '../models/generalSchedule.model';
 import GeneralScheduleItem from '../models/generalScheduleItem.model';
 import sequelize from '../config/database';
 
 // 1. Create a General Schedule with items
-export const createGeneralSchedule = async (req: Request, res: Response): Promise<void> => {
+export const createGeneralSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
     const t = await sequelize.transaction();
     try {
         const { cropName, variety, items } = req.body;
@@ -16,7 +17,8 @@ export const createGeneralSchedule = async (req: Request, res: Response): Promis
 
         const newGeneralSchedule = await GeneralSchedule.create({
             cropName,
-            variety
+            variety,
+            userId: req.user?.id
         }, { transaction: t });
 
         const itemsWithScheduleId = items.map((item: any) => ({
@@ -43,9 +45,15 @@ export const createGeneralSchedule = async (req: Request, res: Response): Promis
 };
 
 // 2. Get all General Schedules
-export const getAllGeneralSchedules = async (req: Request, res: Response): Promise<void> => {
+export const getAllGeneralSchedules = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
+        const whereClause: any = {};
+        if (req.user && req.user.role !== 'admin') {
+            whereClause.userId = req.user.id;
+        }
+
         const schedules = await GeneralSchedule.findAll({
+            where: whereClause,
             include: [{ model: GeneralScheduleItem, as: 'items' }],
             order: [['createdAt', 'DESC']]
         });
@@ -57,7 +65,7 @@ export const getAllGeneralSchedules = async (req: Request, res: Response): Promi
 };
 
 // 3. Get General Schedule by ID
-export const getGeneralScheduleById = async (req: Request, res: Response): Promise<void> => {
+export const getGeneralScheduleById = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
         const schedule = await GeneralSchedule.findByPk(id, {
@@ -68,6 +76,12 @@ export const getGeneralScheduleById = async (req: Request, res: Response): Promi
             res.status(404).json({ success: false, message: 'General Schedule not found' });
             return;
         }
+        
+        if (req.user && req.user.role !== 'admin' && schedule.userId !== req.user.id) {
+            res.status(403).json({ success: false, message: 'Not authorized to view this schedule' });
+            return;
+        }
+
         res.json({ success: true, generalSchedule: schedule });
     } catch (error) {
         console.error('Error fetching general schedule:', error);
@@ -76,7 +90,7 @@ export const getGeneralScheduleById = async (req: Request, res: Response): Promi
 };
 
 // 4. Update General Schedule
-export const updateGeneralSchedule = async (req: Request, res: Response): Promise<void> => {
+export const updateGeneralSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
     const t = await sequelize.transaction();
     try {
         const { id } = req.params;
@@ -86,6 +100,12 @@ export const updateGeneralSchedule = async (req: Request, res: Response): Promis
         if (!schedule) {
             await t.rollback();
             res.status(404).json({ success: false, message: 'General Schedule not found' });
+            return;
+        }
+
+        if (req.user && req.user.role !== 'admin' && schedule.userId !== req.user.id) {
+            await t.rollback();
+            res.status(403).json({ success: false, message: 'Not authorized to update this schedule' });
             return;
         }
 
@@ -122,13 +142,18 @@ export const updateGeneralSchedule = async (req: Request, res: Response): Promis
 };
 
 // 5. Delete General Schedule
-export const deleteGeneralSchedule = async (req: Request, res: Response): Promise<void> => {
+export const deleteGeneralSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
         const schedule = await GeneralSchedule.findByPk(id);
 
         if (!schedule) {
             res.status(404).json({ success: false, message: 'General Schedule not found' });
+            return;
+        }
+
+        if (req.user && req.user.role !== 'admin' && schedule.userId !== req.user.id) {
+            res.status(403).json({ success: false, message: 'Not authorized to delete this schedule' });
             return;
         }
 

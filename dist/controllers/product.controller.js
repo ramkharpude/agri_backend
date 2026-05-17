@@ -16,15 +16,12 @@ exports.deleteProduct = exports.updateProduct = exports.getProductById = exports
 const product_model_1 = __importDefault(require("../models/product.model"));
 const createProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // console.log("createProduct: Receive body:", req.body);
-        // console.log("createProduct: Receive files:", req.files);
         let imageUrls = [];
         if (req.files && Array.isArray(req.files)) {
             imageUrls = req.files.map(file => file.path);
         }
         const productData = Object.assign(Object.assign({}, req.body), { images: imageUrls });
         const product = yield product_model_1.default.create(productData);
-        // console.log("createProduct: Success:", product.id);
         res.status(201).json(product);
     }
     catch (error) {
@@ -79,19 +76,7 @@ const updateProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             }
         }
         // Combine existing (preserved) images and new uploads
-        // If no images sent in body and no files, it arguably keeps nothing? 
-        // Or should it default to *current* DB images if nothing sent?
-        // Usually, in PUT/PATCH, if field is missing, keep old. If sent (empty), clear.
-        // But with FormData, it's hard to "omit". 
-        // Let's assume if client sends ANY image data (text or file), we update. 
-        // If client sends NOTHING, we could keep old. 
-        // But let's simplify: Helper function constructs list.
         let finalImages = [...existingImages, ...newImageUrls];
-        // If user deleted all images in UI, existingImages would be empty.
-        // If they didn't touch images, UI should send existing ones back.
-        // So this logic holds.
-        // Special case: if we want to "keep" old images when NO changes made,
-        // CLIENT must send them.
         const updateData = Object.assign(Object.assign({}, req.body), { images: finalImages });
         yield product.update(updateData);
         res.status(200).json(product);

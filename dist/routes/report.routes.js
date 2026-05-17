@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const report_controller_1 = require("../controllers/report.controller");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const router = (0, express_1.Router)();
+router.get('/dashboard', auth_middleware_1.protect, auth_middleware_1.adminOnly, report_controller_1.getErpDashboardStats);
+router.get('/daily-sales', auth_middleware_1.protect, auth_middleware_1.adminOnly, report_controller_1.getDailySales);
+router.get('/weekly-sales', auth_middleware_1.protect, auth_middleware_1.adminOnly, report_controller_1.getWeeklySales);
+router.get('/monthly-sales', auth_middleware_1.protect, auth_middleware_1.adminOnly, report_controller_1.getMonthlySales);
+router.get('/product-sales', auth_middleware_1.protect, auth_middleware_1.adminOnly, report_controller_1.getProductWiseSales);
+router.get('/customer-sales', auth_middleware_1.protect, auth_middleware_1.adminOnly, report_controller_1.getCustomerWiseSales);
+router.get('/pending-udhari', auth_middleware_1.protect, auth_middleware_1.adminOnly, report_controller_1.getPendingUdhari);
+router.get('/stock-valuation', auth_middleware_1.protect, auth_middleware_1.adminOnly, report_controller_1.getStockValuation);
+exports.default = router;

@@ -14,4 +14,5 @@ router.post('/admin-login', auth_controller_1.adminLogin);
 // Protected Routes
 const auth_middleware_1 = require("../middleware/auth.middleware");
 router.post('/update-fcm-token', auth_middleware_1.protect, auth_controller_1.updateFcmToken);
+router.post('/admin-push-token', auth_middleware_1.protect, auth_controller_1.updateAdminPushToken);
 exports.default = router;

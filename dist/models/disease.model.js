@@ -40,7 +40,8 @@ Disease.init({
     },
     status: { type: sequelize_1.DataTypes.STRING, defaultValue: 'pending' },
     solution: { type: sequelize_1.DataTypes.TEXT, allowNull: true },
-    consultantName: { type: sequelize_1.DataTypes.STRING, allowNull: true }
+    consultantName: { type: sequelize_1.DataTypes.STRING, allowNull: true },
+    suggestedProducts: { type: sequelize_1.DataTypes.JSON, allowNull: true }
 }, {
     sequelize: database_1.default,
     modelName: 'Disease',

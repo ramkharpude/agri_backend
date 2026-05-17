@@ -50,7 +50,7 @@ const protect = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
 });
 exports.protect = protect;
 const adminOnly = (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
+    if (req.user && req.user.role && req.user.role.includes('admin')) {
         next();
     }
     else {

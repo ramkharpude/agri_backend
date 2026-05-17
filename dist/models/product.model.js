@@ -22,7 +22,15 @@ Product.init({
     offer: { type: sequelize_1.DataTypes.STRING, allowNull: true },
     stock: { type: sequelize_1.DataTypes.INTEGER, defaultValue: 0 },
     image: { type: sequelize_1.DataTypes.TEXT, allowNull: true },
-    images: { type: sequelize_1.DataTypes.JSON, allowNull: true } // Store multiple images as JSON array
+    images: { type: sequelize_1.DataTypes.JSON, allowNull: true }, // Store multiple images as JSON array
+    // ERP Fields
+    hsn: { type: sequelize_1.DataTypes.STRING, allowNull: true },
+    barcode: { type: sequelize_1.DataTypes.STRING, allowNull: true },
+    purchasePrice: { type: sequelize_1.DataTypes.FLOAT, allowNull: true },
+    unit: { type: sequelize_1.DataTypes.STRING, allowNull: false, defaultValue: 'piece' },
+    lowStockThreshold: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 10 },
+    batchNumber: { type: sequelize_1.DataTypes.STRING, allowNull: true },
+    expiryDate: { type: sequelize_1.DataTypes.DATE, allowNull: true }
 }, {
     sequelize: database_1.default,
     modelName: 'Product',

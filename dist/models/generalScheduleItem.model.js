@@ -5,27 +5,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 const database_1 = __importDefault(require("../config/database"));
-const plot_model_1 = __importDefault(require("./plot.model"));
-class Schedule extends sequelize_1.Model {
+const generalSchedule_model_1 = __importDefault(require("./generalSchedule.model"));
+class GeneralScheduleItem extends sequelize_1.Model {
 }
-Schedule.init({
+GeneralScheduleItem.init({
     id: {
         type: sequelize_1.DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true
     },
-    plotId: {
+    generalScheduleId: {
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
-        references: { model: plot_model_1.default, key: 'id' }
+        references: { model: generalSchedule_model_1.default, key: 'id' },
+        onDelete: 'CASCADE'
     },
     title: { type: sequelize_1.DataTypes.STRING, allowNull: false },
     description: { type: sequelize_1.DataTypes.STRING, allowNull: false },
     dayNumber: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-    status: {
-        type: sequelize_1.DataTypes.ENUM('upcoming', 'completed'),
-        defaultValue: 'upcoming'
-    },
     stageImages: {
         type: sequelize_1.DataTypes.TEXT,
         allowNull: true,
@@ -50,9 +47,10 @@ Schedule.init({
     }
 }, {
     sequelize: database_1.default,
-    modelName: 'Schedule',
-    tableName: 'schedules',
+    modelName: 'GeneralScheduleItem',
+    tableName: 'general_schedule_items',
     timestamps: true
 });
-Schedule.belongsTo(plot_model_1.default, { foreignKey: 'plotId' });
-exports.default = Schedule;
+GeneralScheduleItem.belongsTo(generalSchedule_model_1.default, { foreignKey: 'generalScheduleId' });
+generalSchedule_model_1.default.hasMany(GeneralScheduleItem, { foreignKey: 'generalScheduleId', as: 'items' });
+exports.default = GeneralScheduleItem;

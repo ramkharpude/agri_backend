@@ -12,49 +12,60 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateFcmToken = exports.adminLogin = exports.checkUser = exports.register = exports.verifyOtpAndLogin = exports.sendOtp = void 0;
+exports.updateAdminPushToken = exports.updateFcmToken = exports.adminLogin = exports.checkUser = exports.register = exports.verifyOtpAndLogin = exports.sendOtp = exports.getAdminPushToken = void 0;
 const user_model_1 = __importDefault(require("../models/user.model"));
+const customer_model_1 = __importDefault(require("../models/customer.model"));
 const otp_service_1 = require("../services/otp.service");
 const communication_service_1 = require("../services/communication.service");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key_123';
+// In-memory store for admin push token (admin is not a DB user)
+let adminPushToken = null;
+const getAdminPushToken = () => adminPushToken;
+exports.getAdminPushToken = getAdminPushToken;
 // Step 1: Request OTP
 const sendOtp = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // console.time('OTP-Total-Request-Time');
     const { phoneNumber } = req.body;
     if (!phoneNumber) {
         return res.status(400).json({ message: 'Phone number is required' });
     }
     // Mock OTP Generation
-    const otp = (0, otp_service_1.generateOtp)(phoneNumber);
+    const otpResult = (0, otp_service_1.generateOtp)(phoneNumber);
+    if (!otpResult.success || !otpResult.otp) {
+        return res.status(429).json({
+            message: otpResult.message || 'Too many requests. Please try again later.',
+            success: false
+        });
+    }
+    const otp = otpResult.otp;
+    console.log(`[OTP] Generated successfully for ${phoneNumber}: ${otp}`);
     // Real OTP Sending
     let deliveryResult = { success: false, method: 'none' };
     try {
-        // console.time('OTP-Service-Call');
         deliveryResult = yield (0, communication_service_1.sendOtpMessage)(phoneNumber, otp);
-        // console.timeEnd('OTP-Service-Call');
     }
     catch (e) {
         console.error('OTP Send Error Exception:', e);
     }
     if (deliveryResult.success) {
-        // console.log(`OTP sent via ${deliveryResult.method}`);
-        // console.timeEnd('OTP-Total-Request-Time');
         res.status(200).json({
             message: `OTP sent successfully via ${deliveryResult.method}`,
             success: true,
-            method: deliveryResult.method // Sending method to frontend
+            method: deliveryResult.method
         });
     }
-    else {
-        console.error('Failed to send OTP via all methods. FALLBACK MODE ACTIVE.');
-        // FALLBACK FOR DEV/NO-CREDITS: Return 200 anyway and log the OTP
-        // console.log(`[DEV BYPASS] OTP for ${phoneNumber} is: ${otp}`);
-        // console.timeEnd('OTP-Total-Request-Time');
+    else if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to send OTP via all methods. FALLBACK MODE ACTIVE (DEV ONLY).');
         res.status(200).json({
             message: 'OTP sent (Dev Bypass). Check server logs for code.',
             success: true,
             devOtp: otp // Optional: send back in response for easier testing if desired, but console is safer
+        });
+    }
+    else {
+        res.status(500).json({
+            message: 'Failed to send OTP via any method. Please try again later.',
+            success: false
         });
     }
 });
@@ -79,7 +90,17 @@ const verifyOtpAndLogin = (req, res) => __awaiter(void 0, void 0, void 0, functi
             return res.status(200).json({
                 message: 'Login successful',
                 token,
-                user,
+                user: {
+                    id: user.id,
+                    phoneNumber: user.phoneNumber,
+                    fullName: user.fullName,
+                    address: user.address,
+                    role: user.role,
+                    isVerified: user.isVerified,
+                    isApproved: user.isApproved,
+                    specialtyCrops: user.specialtyCrops,
+                    profilePhoto: user.profilePhoto
+                },
                 isNewUser: false
             });
         }
@@ -99,27 +120,97 @@ const verifyOtpAndLogin = (req, res) => __awaiter(void 0, void 0, void 0, functi
 exports.verifyOtpAndLogin = verifyOtpAndLogin;
 // Step 3: Complete Registration (if new user)
 const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { phoneNumber, fullName, address, role } = req.body;
+    const { phoneNumber, fullName, address, role, specialtyCrops, profilePhoto } = req.body;
     if (!phoneNumber || !fullName || !address) {
         return res.status(400).json({ message: 'Phone, Name, and Address are required' });
     }
     try {
+        const userRole = role || 'farmer';
         const existingUser = yield user_model_1.default.findOne({ where: { phoneNumber } });
         if (existingUser) {
-            return res.status(400).json({ message: 'User already exists' });
+            const rolesArray = existingUser.role ? existingUser.role.split(',') : [];
+            if (rolesArray.includes(userRole)) {
+                // User already has this role, treat as successful login
+                const token = jsonwebtoken_1.default.sign({ id: existingUser.id, phoneNumber: existingUser.phoneNumber }, JWT_SECRET, { expiresIn: '7d' });
+                return res.status(200).json({
+                    message: 'User already has this role. Login successful.',
+                    token,
+                    user: {
+                        id: existingUser.id,
+                        phoneNumber: existingUser.phoneNumber,
+                        fullName: existingUser.fullName,
+                        address: existingUser.address,
+                        role: existingUser.role,
+                        isVerified: existingUser.isVerified,
+                        isApproved: existingUser.isApproved,
+                        specialtyCrops: existingUser.specialtyCrops,
+                        profilePhoto: existingUser.profilePhoto
+                    }
+                });
+            }
+            else {
+                // Append the new role
+                existingUser.role = existingUser.role ? `${existingUser.role},${userRole}` : userRole;
+                // If they are adding a consultant role, we update their specialty crops if provided
+                if (specialtyCrops && Array.isArray(specialtyCrops)) {
+                    const existingCrops = existingUser.specialtyCrops || [];
+                    const newCrops = specialtyCrops.filter((c) => !existingCrops.includes(c));
+                    if (newCrops.length > 0) {
+                        existingUser.specialtyCrops = [...existingCrops, ...newCrops];
+                    }
+                }
+                // Note: We leave isApproved as is. If they were already an approved farmer, they stay approved.
+                // A more complex system might require separate approval status per role.
+                yield existingUser.save();
+                const token = jsonwebtoken_1.default.sign({ id: existingUser.id, phoneNumber: existingUser.phoneNumber }, JWT_SECRET, { expiresIn: '7d' });
+                return res.status(200).json({
+                    message: `Role ${userRole} added successfully.`,
+                    token,
+                    user: {
+                        id: existingUser.id,
+                        phoneNumber: existingUser.phoneNumber,
+                        fullName: existingUser.fullName,
+                        address: existingUser.address,
+                        role: existingUser.role,
+                        isVerified: existingUser.isVerified,
+                        isApproved: existingUser.isApproved,
+                        specialtyCrops: existingUser.specialtyCrops,
+                        profilePhoto: existingUser.profilePhoto
+                    }
+                });
+            }
         }
         const newUser = yield user_model_1.default.create({
             phoneNumber,
             fullName,
             address,
-            role: role || 'farmer',
-            isVerified: true
+            role: userRole,
+            isVerified: true,
+            specialtyCrops: specialtyCrops || null,
+            profilePhoto: profilePhoto || null,
+            isApproved: userRole === 'consultant' ? false : true
         });
+        // Retroactively link to existing customer profile if admin made a bill for them previously
+        if (userRole === 'farmer') {
+            yield customer_model_1.default.update({ userId: newUser.id }, { where: { phoneNumber } });
+        }
         const token = jsonwebtoken_1.default.sign({ id: newUser.id, phoneNumber: newUser.phoneNumber }, JWT_SECRET, { expiresIn: '7d' });
         res.status(201).json({
-            message: 'Registration successful',
+            message: userRole === 'consultant'
+                ? 'Registration successful. Awaiting admin approval.'
+                : 'Registration successful',
             token,
-            user: newUser
+            user: {
+                id: newUser.id,
+                phoneNumber: newUser.phoneNumber,
+                fullName: newUser.fullName,
+                address: newUser.address,
+                role: newUser.role,
+                isVerified: newUser.isVerified,
+                isApproved: newUser.isApproved,
+                specialtyCrops: newUser.specialtyCrops,
+                profilePhoto: newUser.profilePhoto
+            }
         });
     }
     catch (error) {
@@ -133,7 +224,7 @@ const checkUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { phoneNumber } = req.body;
     try {
         const user = yield user_model_1.default.findOne({ where: { phoneNumber } });
-        res.status(200).json({ exists: !!user });
+        res.status(200).json({ exists: !!user, role: user ? user.role : null });
     }
     catch (error) {
         console.error('Check User Error:', error);
@@ -174,3 +265,18 @@ const updateFcmToken = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.updateFcmToken = updateFcmToken;
+const updateAdminPushToken = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { pushToken } = req.body;
+        if (pushToken) {
+            adminPushToken = pushToken;
+            console.log('[Admin Push Token] Updated:', pushToken);
+        }
+        res.status(200).json({ message: 'Admin push token updated successfully' });
+    }
+    catch (error) {
+        console.error('Update Admin Push Token Error:', error);
+        res.status(500).json({ message: 'Error updating admin push token' });
+    }
+});
+exports.updateAdminPushToken = updateAdminPushToken;

@@ -18,7 +18,6 @@ const schedule_model_1 = __importDefault(require("../models/schedule.model"));
 const getPlotSchedules = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { plotId } = req.params;
-        // console.log(`[SCHEDULE] Fetching schedules for plotId: ${plotId}`);
         const schedules = yield schedule_model_1.default.findAll({
             where: { plotId },
             order: [['dayNumber', 'ASC']]
@@ -34,12 +33,14 @@ exports.getPlotSchedules = getPlotSchedules;
 // Create a schedule (Internal/Admin use)
 const createSchedule = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { plotId, title, description, dayNumber } = req.body;
+        const { plotId, title, description, dayNumber, stageImages = [], productImages = [] } = req.body;
         const newSchedule = yield schedule_model_1.default.create({
             plotId,
             title,
             description,
-            dayNumber
+            dayNumber,
+            stageImages,
+            productImages
         });
         res.status(201).json(newSchedule);
     }
@@ -52,12 +53,14 @@ exports.createSchedule = createSchedule;
 const updateSchedule = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id } = req.params;
-        const { title, description, dayNumber } = req.body;
+        const { title, description, dayNumber, stageImages, productImages } = req.body;
         const schedule = yield schedule_model_1.default.findByPk(id);
         if (!schedule) {
             return res.status(404).json({ message: 'Schedule not found' });
         }
-        yield schedule.update({ title, description, dayNumber });
+        yield schedule.update(Object.assign(Object.assign({ title,
+            description,
+            dayNumber }, (stageImages !== undefined && { stageImages })), (productImages !== undefined && { productImages })));
         res.status(200).json(schedule);
     }
     catch (error) {
@@ -93,10 +96,6 @@ const updateScheduleStatus = (req, res) => __awaiter(void 0, void 0, void 0, fun
         if (!schedule) {
             return res.status(404).json({ message: 'Schedule not found' });
         }
-        // Removed validation to allow status toggle
-        // if (schedule.status === 'completed') {
-        //    return res.status(400).json({ message: 'Cannot change status of a completed schedule' });
-        // }
         schedule.status = status;
         yield schedule.save();
         res.status(200).json(schedule);

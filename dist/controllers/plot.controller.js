@@ -51,7 +51,6 @@ exports.createPlot = createPlot;
 const getUserPlots = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;
-        // console.log(`Fetching active plots for user: ${userId}`);
         const plots = yield plot_model_1.default.findAll({
             where: {
                 userId,

@@ -8,6 +8,8 @@ const notification_controller_1 = require("../controllers/notification.controlle
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = express_1.default.Router();
 router.get('/', auth_middleware_1.protect, notification_controller_1.getUserNotifications);
+router.get('/unread-count', auth_middleware_1.protect, notification_controller_1.getUnreadCount);
+router.put('/mark-all-read', auth_middleware_1.protect, notification_controller_1.markAllAsRead);
 router.get('/user/:userId', notification_controller_1.getNotificationsForUser); // Admin route
 router.put('/:id/read', auth_middleware_1.protect, notification_controller_1.markAsRead);
 router.post('/send', notification_controller_1.sendNotification); // Single user

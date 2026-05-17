@@ -37,6 +37,27 @@ User.init({
     pushToken: {
         type: sequelize_1.DataTypes.STRING,
         allowNull: true
+    },
+    specialtyCrops: {
+        type: sequelize_1.DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null,
+        get() {
+            const rawValue = this.getDataValue('specialtyCrops');
+            return rawValue ? JSON.parse(rawValue) : null;
+        },
+        set(value) {
+            this.setDataValue('specialtyCrops', value ? JSON.stringify(value) : null);
+        }
+    },
+    profilePhoto: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null
+    },
+    isApproved: {
+        type: sequelize_1.DataTypes.BOOLEAN,
+        defaultValue: true
     }
 }, {
     sequelize: database_1.default,

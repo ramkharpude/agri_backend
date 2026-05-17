@@ -12,18 +12,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.togglePlotStatus = exports.getUserPlotHistory = exports.getUserPlots = exports.getAllPlots = exports.getAllUsers = exports.getAllDiseases = exports.getShopStats = exports.getDashboardStats = void 0;
+exports.rejectConsultant = exports.approveConsultant = exports.getPendingConsultants = exports.togglePlotStatus = exports.getUserPlotHistory = exports.getUserPlots = exports.getAllPlots = exports.getAllUsers = exports.getAllDiseases = exports.getShopStats = exports.getDashboardStats = void 0;
 const user_model_1 = __importDefault(require("../models/user.model"));
 const plot_model_1 = __importDefault(require("../models/plot.model"));
 const disease_model_1 = __importDefault(require("../models/disease.model"));
 const product_model_1 = __importDefault(require("../models/product.model"));
-const order_model_1 = __importDefault(require("../models/order.model"));
+const invoice_model_1 = __importDefault(require("../models/invoice.model"));
 const sequelize_1 = require("sequelize");
+const notification_service_1 = require("../services/notification.service");
 const getDashboardStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const usersCount = yield user_model_1.default.count();
+        const usersCount = yield user_model_1.default.count({ where: { role: { [sequelize_1.Op.like]: '%farmer%' } } });
         const plotsCount = yield plot_model_1.default.count({ where: { status: 'active' } });
         const diseasesCount = yield disease_model_1.default.count();
+        const pendingConsultantsCount = yield user_model_1.default.count({ where: { role: { [sequelize_1.Op.like]: '%consultant%' }, isApproved: false } });
         // Get recent 5 pending diseases
         const recentDiseases = yield disease_model_1.default.findAll({
             limit: 5,
@@ -34,6 +36,7 @@ const getDashboardStats = (req, res) => __awaiter(void 0, void 0, void 0, functi
             usersCount,
             plotsCount,
             diseasesCount,
+            pendingConsultantsCount,
             recentDiseases
         });
     }
@@ -46,7 +49,7 @@ exports.getDashboardStats = getDashboardStats;
 const getShopStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const productsCount = yield product_model_1.default.count();
-        const ordersCount = yield order_model_1.default.count();
+        const ordersCount = yield invoice_model_1.default.count({ where: { status: 'online_pending' } });
         // Count low stock (e.g., quantity < 50)
         // Adjust threshold as needed
         const lowStockCount = yield product_model_1.default.count({
@@ -54,9 +57,9 @@ const getShopStats = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 stock: { [sequelize_1.Op.lt]: 5 }
             }
         });
-        // Calculate Revenue (Sum of totalAmount for non-cancelled orders)
+        // Calculate Revenue (Sum of netAmount for non-cancelled orders)
         // Note: SQLite sum might return string
-        const revenueResult = yield order_model_1.default.sum('totalAmount', {
+        const revenueResult = yield invoice_model_1.default.sum('netAmount', {
             where: {
                 status: { [sequelize_1.Op.ne]: 'cancelled' }
             }
@@ -171,3 +174,59 @@ const togglePlotStatus = (req, res) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.togglePlotStatus = togglePlotStatus;
+// ─── Consultant Management ────────────────────────────────────────────────────
+const getPendingConsultants = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const consultants = yield user_model_1.default.findAll({
+            where: { role: { [sequelize_1.Op.like]: '%consultant%' }, isApproved: false },
+            order: [['createdAt', 'DESC']]
+        });
+        res.status(200).json(consultants);
+    }
+    catch (error) {
+        console.error('Get Pending Consultants Error:', error);
+        res.status(500).json({ message: 'Error fetching consultants', error: error.message });
+    }
+});
+exports.getPendingConsultants = getPendingConsultants;
+const approveConsultant = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const user = yield user_model_1.default.findByPk(id);
+        if (!user || !user.role || !user.role.includes('consultant')) {
+            return res.status(404).json({ message: 'Consultant not found' });
+        }
+        user.isApproved = true;
+        yield user.save();
+        // Notify consultant
+        if (user.pushToken) {
+            yield (0, notification_service_1.sendPushNotification)(user.pushToken, '✅ Account Approved!', 'Your consultant account has been verified. You can now start consulting.');
+        }
+        res.status(200).json({ message: 'Consultant approved', user });
+    }
+    catch (error) {
+        console.error('Approve Consultant Error:', error);
+        res.status(500).json({ message: 'Error approving consultant', error: error.message });
+    }
+});
+exports.approveConsultant = approveConsultant;
+const rejectConsultant = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const user = yield user_model_1.default.findByPk(id);
+        if (!user || !user.role || !user.role.includes('consultant')) {
+            return res.status(404).json({ message: 'Consultant not found' });
+        }
+        // Notify before deleting
+        if (user.pushToken) {
+            yield (0, notification_service_1.sendPushNotification)(user.pushToken, '❌ Account Rejected', 'Your consultant registration was not approved. Please contact admin for details.');
+        }
+        yield user.destroy();
+        res.status(200).json({ message: 'Consultant rejected and removed' });
+    }
+    catch (error) {
+        console.error('Reject Consultant Error:', error);
+        res.status(500).json({ message: 'Error rejecting consultant', error: error.message });
+    }
+});
+exports.rejectConsultant = rejectConsultant;

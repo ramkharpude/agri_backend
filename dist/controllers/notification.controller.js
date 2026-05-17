@@ -12,9 +12,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBroadcastHistory = exports.broadcastNotification = exports.sendNotification = exports.createNotification = exports.markAsRead = exports.getNotificationsForUser = exports.getUserNotifications = void 0;
+exports.markAllAsRead = exports.getUnreadCount = exports.getBroadcastHistory = exports.broadcastNotification = exports.sendNotification = exports.createNotification = exports.markAsRead = exports.getNotificationsForUser = exports.getUserNotifications = void 0;
 const notification_model_1 = __importDefault(require("../models/notification.model"));
 const user_model_1 = __importDefault(require("../models/user.model"));
+const notification_service_1 = require("../services/notification.service");
+const broadcastLog_model_1 = __importDefault(require("../models/broadcastLog.model"));
 // Get user notifications (for app user)
 const getUserNotifications = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -79,7 +81,6 @@ exports.createNotification = createNotification;
 const sendNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { userId, title, message } = req.body;
-        // console.log(`Sending notification to user ${userId}: ${title}`);
         yield notification_model_1.default.create({
             userId,
             title,
@@ -87,6 +88,11 @@ const sendNotification = (req, res) => __awaiter(void 0, void 0, void 0, functio
             type: 'admin_message',
             isRead: false
         });
+        // Send Push Notification
+        const user = yield user_model_1.default.findByPk(userId);
+        if (user && user.pushToken) {
+            yield (0, notification_service_1.sendPushNotification)(user.pushToken, title, message);
+        }
         res.status(200).json({ success: true, message: 'Notification sent successfully' });
     }
     catch (error) {
@@ -95,13 +101,12 @@ const sendNotification = (req, res) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.sendNotification = sendNotification;
-const broadcastLog_model_1 = __importDefault(require("../models/broadcastLog.model"));
 // Broadcast to ALL users
 const broadcastNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { title, message } = req.body;
         // 1. Fetch all users
-        const users = yield user_model_1.default.findAll({ attributes: ['id'] });
+        const users = yield user_model_1.default.findAll({ attributes: ['id', 'pushToken'] });
         if (!users.length) {
             return res.status(400).json({ message: 'No users found to broadcast to.' });
         }
@@ -115,7 +120,14 @@ const broadcastNotification = (req, res) => __awaiter(void 0, void 0, void 0, fu
         }));
         // 3. Bulk Create (Efficient)
         yield notification_model_1.default.bulkCreate(notifications);
-        // 4. Log to History
+        // 4. Send Batch Push Notifications
+        const userTokens = users
+            .map(u => u.pushToken)
+            .filter(token => token !== null && token !== undefined && token !== '');
+        if (userTokens.length > 0) {
+            yield (0, notification_service_1.sendBatchPushNotifications)(userTokens, title, message);
+        }
+        // 5. Log to History
         yield broadcastLog_model_1.default.create({
             title,
             message,
@@ -143,3 +155,29 @@ const getBroadcastHistory = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 });
 exports.getBroadcastHistory = getBroadcastHistory;
+// Get unread notification count for authenticated user
+const getUnreadCount = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.user.id;
+        const count = yield notification_model_1.default.count({ where: { userId, isRead: false } });
+        res.status(200).json({ count });
+    }
+    catch (error) {
+        console.error('Get Unread Count Error:', error);
+        res.status(500).json({ message: 'Error fetching unread count', error: error.message });
+    }
+});
+exports.getUnreadCount = getUnreadCount;
+// Mark all notifications as read for authenticated user
+const markAllAsRead = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.user.id;
+        yield notification_model_1.default.update({ isRead: true }, { where: { userId, isRead: false } });
+        res.status(200).json({ success: true });
+    }
+    catch (error) {
+        console.error('Mark All Read Error:', error);
+        res.status(500).json({ message: 'Error marking notifications as read', error: error.message });
+    }
+});
+exports.markAllAsRead = markAllAsRead;

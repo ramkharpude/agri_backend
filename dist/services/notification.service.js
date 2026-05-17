@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendPushNotification = void 0;
+exports.sendBatchPushNotifications = exports.sendPushNotification = void 0;
 const expo_server_sdk_1 = require("expo-server-sdk");
 const expo = new expo_server_sdk_1.Expo();
 const sendPushNotification = (pushToken, title, body, data) => __awaiter(void 0, void 0, void 0, function* () {
@@ -29,7 +29,6 @@ const sendPushNotification = (pushToken, title, body, data) => __awaiter(void 0,
         for (let chunk of chunks) {
             try {
                 const ticketChunk = yield expo.sendPushNotificationsAsync(chunk);
-                // console.log('Push notification sent:', ticketChunk);
             }
             catch (error) {
                 console.error('Error sending chunk:', error);
@@ -41,3 +40,31 @@ const sendPushNotification = (pushToken, title, body, data) => __awaiter(void 0,
     }
 });
 exports.sendPushNotification = sendPushNotification;
+const sendBatchPushNotifications = (tokens, title, body, data) => __awaiter(void 0, void 0, void 0, function* () {
+    let messages = [];
+    for (let pushToken of tokens) {
+        if (!expo_server_sdk_1.Expo.isExpoPushToken(pushToken)) {
+            console.warn(`Push token ${pushToken} is not a valid Expo push token`);
+            continue;
+        }
+        messages.push({
+            to: pushToken,
+            sound: 'default',
+            title: title,
+            body: body,
+            data: data || {},
+        });
+    }
+    let chunks = expo.chunkPushNotifications(messages);
+    let tickets = [];
+    for (let chunk of chunks) {
+        try {
+            let ticketChunk = yield expo.sendPushNotificationsAsync(chunk);
+            tickets.push(...ticketChunk);
+        }
+        catch (error) {
+            console.error('Error sending chunk', error);
+        }
+    }
+});
+exports.sendBatchPushNotifications = sendBatchPushNotifications;

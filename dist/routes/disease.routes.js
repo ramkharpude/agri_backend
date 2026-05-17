@@ -10,6 +10,7 @@ const upload_middleware_1 = require("../middleware/upload.middleware");
 const router = express_1.default.Router();
 router.post('/', auth_middleware_1.protect, upload_middleware_1.upload.array('images', 5), disease_controller_1.reportDisease);
 router.get('/', auth_middleware_1.protect, disease_controller_1.getUserDiseases);
+router.get('/consultant', auth_middleware_1.protect, disease_controller_1.getConsultantDiseases);
 router.get('/:id', auth_middleware_1.protect, disease_controller_1.getDiseaseDetails);
 router.put('/:id/diagnose', auth_middleware_1.protect, disease_controller_1.diagnoseDisease);
 exports.default = router;
